@@ -5,7 +5,7 @@ Usa pydantic-settings para leer variables de entorno desde .env
 
 from pathlib import Path
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -81,7 +81,17 @@ class Settings(BaseSettings):
     WHISPER_HABILITADO: bool = False
     WHISPER_MODELO: str = "base"        # tiny | base | small | medium | large
 
-    model_config = {"env_file": str(BASE_DIR / ".env"), "env_file_encoding": "utf-8"}
+    # -----------------------------------------------------------------------
+    # API Keys
+    # -----------------------------------------------------------------------
+    gemini_api_key: str | None = None
+    nvidia_api_key: str | None = None
+
+    model_config = SettingsConfigDict(
+        env_file=str(BASE_DIR / ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 settings = Settings()
