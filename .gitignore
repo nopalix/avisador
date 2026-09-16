@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Base de Datos
+*.db
+*.db-journal
+
+# Configuración y Secretos
+.env
+credentials.json
+token.json
+
+# Logs
+logs/*.log
+*.log
+
+# Archivos de Usuario (Uploads)
+uploads/audio/*
+uploads/imagenes/*
+!uploads/audio/.gitkeep
+!uploads/imagenes/.gitkeep
+
+# IDEs
+.vscode/
+.idea/

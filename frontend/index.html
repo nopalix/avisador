@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="description" content="AVISADOR — Registra tus tareas al instante" />
+  <title>AVISADOR</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <script>
+    // Aplica el tema antes de renderizar para evitar "flash" de tema incorrecto
+    (function () {
+      var t = localStorage.getItem("avisador-tema");
+      if (t === "dark" || t === "light") {
+        document.documentElement.setAttribute("data-theme", t);
+      }
+    })();
+  </script>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <span class="header-logo">&#9889; AVISADOR</span>
+      <nav class="header-nav">
+        <a href="/" class="nav-link active">Nueva</a>
+        <a href="/admin.html" class="nav-link">Admin</a>
+        <button type="button" id="btn-tema" class="btn-tema" aria-label="Cambiar tema">&#127769;</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Indicador offline -->
+  <div id="offline-banner" class="offline-banner" hidden>
+    Sin conexion — la tarea se guardara localmente y se enviara al reconectarse
+  </div>
+
+  <!-- Formulario principal -->
+  <main class="main">
+    <form id="form-nota" class="card" novalidate>
+      <h2 class="form-title">Registrar tarea</h2>
+
+      <!-- Asunto -->
+      <div class="field">
+        <label for="asunto" class="label">Asunto <span class="req">*</span></label>
+        <input id="asunto" name="asunto" type="text" class="input"
+               placeholder="¿Qué necesitas hacer?" autocomplete="off" required />
+        <span class="field-error" id="err-asunto"></span>
+      </div>
+
+      <!-- Motivo -->
+      <div class="field">
+        <label for="motivo" class="label">Motivo <span class="req">*</span></label>
+        <textarea id="motivo" name="motivo" class="input textarea" rows="3"
+                  placeholder="¿Por qué es importante?" required></textarea>
+        <span class="field-error" id="err-motivo"></span>
+      </div>
+
+      <!-- Dependencias -->
+      <div class="field">
+        <label class="label">Dependencias <span class="req">*</span></label>
+        <div id="deps-container" class="deps-container"></div>
+        <div class="deps-add-row">
+          <input id="dep-input" type="text" class="input dep-input"
+                 placeholder="Agrega una dependencia y presiona Enter" />
+          <button type="button" id="btn-add-dep" class="btn btn-sm btn-secondary">+</button>
+        </div>
+        <span class="field-error" id="err-deps"></span>
+      </div>
+
+      <!-- Lugar -->
+      <div class="field">
+        <label for="lugar" class="label">Lugar <span class="opt">(opcional)</span></label>
+        <input id="lugar" name="lugar" type="text" class="input"
+               placeholder="Dirección o nombre del lugar" />
+      </div>
+
+      <!-- Fechas -->
+      <div class="field-row">
+        <div class="field">
+          <label for="f_inicio" class="label">Inicio</label>
+          <input id="f_inicio" name="f_inicio" type="datetime-local" class="input" />
+        </div>
+        <div class="field">
+          <label for="limite" class="label">Límite</label>
+          <input id="limite" name="limite" type="datetime-local" class="input" />
+        </div>
+      </div>
+
+      <!-- Audio -->
+      <div class="field">
+        <label class="label">Audio <span class="opt">(opcional)</span></label>
+        <div class="media-row">
+          <button type="button" id="btn-grabar" class="btn btn-media">
+            <span id="icono-grabar">&#127908;</span> Grabar
+          </button>
+          <span id="timer-audio" class="timer" hidden>0:00</span>
+          <audio id="preview-audio" class="media-preview" controls hidden></audio>
+          <button type="button" id="btn-limpiar-audio" class="btn btn-sm btn-danger" hidden>x</button>
+        </div>
+        <input id="audio-file" name="audio" type="file"
+               accept="audio/*" capture="microphone" class="input-file" hidden />
+        <label for="audio-file" class="btn btn-outline btn-sm">Subir archivo</label>
+      </div>
+
+      <!-- Imagen -->
+      <div class="field">
+        <label class="label">Imagen <span class="opt">(opcional)</span></label>
+        <div class="media-row">
+          <input id="imagen-file" name="imagen" type="file"
+                 accept="image/*" capture="environment" class="input-file" hidden />
+          <label for="imagen-file" class="btn btn-media">&#128247; Tomar foto</label>
+          <button type="button" id="btn-limpiar-imagen" class="btn btn-sm btn-danger" hidden>x</button>
+        </div>
+        <img id="preview-imagen" class="img-preview" alt="Vista previa" hidden />
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" id="btn-submit" class="btn btn-primary btn-full">
+        Guardar tarea
+      </button>
+
+      <!-- Resultado -->
+      <div id="resultado" class="resultado" hidden></div>
+    </form>
+
+    <!-- Lista reciente (últimas 10) -->
+    <section class="card recientes">
+      <div class="recientes-header">
+        <h3>Recientes</h3>
+        <button id="btn-refresh" class="btn btn-sm btn-outline">&#8635; Actualizar</button>
+      </div>
+      <div id="lista-notas" class="lista-notas">
+        <p class="placeholder">Cargando...</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Toggle manual de modo claro/oscuro
+    (function () {
+      var btn = document.getElementById("btn-tema");
+      function iconoTema() {
+        var esOscuro = document.documentElement.getAttribute("data-theme") === "dark"
+          || (!localStorage.getItem("avisador-tema")
+             && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        btn.textContent = esOscuro ? "\u2600\uFE0F" : "\u{1F319}";
+      }
+      btn.addEventListener("click", function () {
+        var actual = document.documentElement.getAttribute("data-theme");
+        var nuevo = actual === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", nuevo);
+        localStorage.setItem("avisador-tema", nuevo);
+        iconoTema();
+      });
+      iconoTema();
+    })();
+  </script>
+  <script src="/js/app.js" type="module"></script>
+</body>
+</html>

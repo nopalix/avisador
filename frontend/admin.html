@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>AVISADOR — Admin</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <script>
+    // Aplica el tema antes de renderizar para evitar "flash" de tema incorrecto
+    (function () {
+      var t = localStorage.getItem("avisador-tema");
+      if (t === "dark" || t === "light") {
+        document.documentElement.setAttribute("data-theme", t);
+      }
+    })();
+  </script>
+  <style>
+    /* Estilos específicos del admin */
+    .admin-main { max-width: 960px; margin: 1.5rem auto; padding: 0 1rem 3rem; }
+
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: .75rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: var(--superficie);
+      border-radius: var(--radio);
+      box-shadow: var(--sombra);
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat-num { font-size: 1.8rem; font-weight: 800; color: var(--azul); }
+    .stat-label { font-size: .78rem; color: var(--gris-5); margin-top: .2rem; }
+
+    /* Filtros */
+    .filtros {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-bottom: 1rem;
+      align-items: flex-end;
+    }
+    .filtros .input { max-width: 220px; }
+    .filtros select.input { max-width: 160px; }
+
+    /* Tabla */
+    .tabla-wrapper { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    th {
+      background: var(--gris-2);
+      padding: .65rem .85rem;
+      text-align: left;
+      font-weight: 700;
+      color: var(--gris-7);
+      border-bottom: 2px solid var(--gris-3);
+      white-space: nowrap;
+    }
+    td { padding: .6rem .85rem; border-bottom: 1px solid var(--gris-3); vertical-align: middle; }
+    tr:hover td { background: var(--gris-1); }
+    .td-asunto { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .td-motivo { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gris-5); }
+    .td-actions { display: flex; gap: .35rem; }
+
+    /* Paginación */
+    .paginacion {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: .5rem;
+      margin-top: 1rem;
+    }
+    .pag-info { font-size: .85rem; color: var(--gris-5); }
+
+    /* Modal detalle */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.5);
+      display: none;
+      align-items: center; justify-content: center;
+      z-index: 200; padding: 1rem;
+    }
+    .modal-overlay.abierto {
+      display: flex;
+    }
+    .modal {
+      background: var(--superficie);
+      border-radius: var(--radio);
+      max-width: 560px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 1.5rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+      color: var(--texto);
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .modal-title { font-size: 1.1rem; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gris-5); }
+    .modal-campo { margin-bottom: .75rem; }
+    .modal-campo-label { font-size: .8rem; font-weight: 700; color: var(--gris-5); text-transform: uppercase; }
+    .modal-campo-valor { margin-top: .2rem; }
+    .modal-media { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: .5rem; }
+
+    .select-estado { font-size: .82rem; padding: .3rem .5rem; border-radius: 6px; border: 1px solid var(--borde); background: var(--entrada); color: var(--texto); }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <span class="header-logo">&#9889; AVISADOR</span>
+      <nav class="header-nav">
+        <a href="/" class="nav-link">Nueva</a>
+        <a href="/admin.html" class="nav-link active">Admin</a>
+        <button type="button" id="btn-tema" class="btn-tema" aria-label="Cambiar tema">&#127769;</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <h2 style="margin-bottom:1.2rem;font-size:1.2rem;font-weight:700">Panel de administración</h2>
+
+    <!-- Estadísticas -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card"><div class="stat-num" id="s-total">—</div><div class="stat-label">Total</div></div>
+      <div class="stat-card"><div class="stat-num" id="s-pendiente">—</div><div class="stat-label">Pendientes</div></div>
+      <div class="stat-card"><div class="stat-num" id="s-en_progreso">—</div><div class="stat-label">En progreso</div></div>
+      <div class="stat-card"><div class="stat-num" id="s-completada">—</div><div class="stat-label">Completadas</div></div>
+      <div class="stat-card"><div class="stat-num" id="s-vencidas" style="color:var(--rojo)">—</div><div class="stat-label">Vencidas</div></div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filtros">
+      <input id="f-buscar" type="search" class="input" placeholder="Buscar en asunto / motivo..." />
+      <select id="f-estado" class="input">
+        <option value="">Todos los estados</option>
+        <option value="pendiente">Pendiente</option>
+        <option value="en_progreso">En progreso</option>
+        <option value="completada">Completada</option>
+        <option value="cancelada">Cancelada</option>
+      </select>
+      <button id="btn-buscar" class="btn btn-secondary">Buscar</button>
+      <button id="btn-eliminar-sel" class="btn btn-danger btn-sm" disabled>Eliminar seleccionadas</button>
+      <span style="flex:1"></span>
+      <button id="btn-export-csv" class="btn btn-outline btn-sm">&#11015; Exportar CSV</button>
+      <button id="btn-export-json" class="btn btn-outline btn-sm">&#11015; Exportar JSON</button>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tabla-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="chk-all" /></th>
+              <th>Asunto</th>
+              <th>Motivo</th>
+              <th>Estado</th>
+              <th>Límite</th>
+              <th>Creado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-body">
+            <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--gris-5)">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- Paginación -->
+      <div class="paginacion" style="padding:.75rem 1rem;border-top:1px solid var(--gris-3)">
+        <button id="btn-anterior" class="btn btn-sm btn-outline" disabled>&laquo; Ant.</button>
+        <span class="pag-info" id="pag-info">—</span>
+        <button id="btn-siguiente" class="btn btn-sm btn-outline" disabled>Sig. &raquo;</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal detalle -->
+  <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)cerrarModal()">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title">Detalle de tarea</span>
+        <button class="modal-close" id="modal-close" onclick="cerrarModal()">&times;</button>
+      </div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Login del panel admin -->
+  <div class="modal-overlay" id="login-overlay">
+    <div class="modal" style="max-width:340px">
+      <div class="modal-header">
+        <span class="modal-title">&#128274; Acceso al panel</span>
+      </div>
+      <form id="login-form">
+        <div class="modal-campo">
+          <label class="modal-campo-label" for="login-user">Usuario</label>
+          <input class="input" id="login-user" autocomplete="username" required />
+        </div>
+        <div class="modal-campo">
+          <label class="modal-campo-label" for="login-pass">Contraseña</label>
+          <input class="input" type="password" id="login-pass" autocomplete="current-password" required />
+        </div>
+        <div id="login-error" style="color:var(--rojo);font-size:.85rem;display:none;margin-bottom:.5rem">Credenciales incorrectas</div>
+        <button type="submit" class="btn" style="width:100%">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+  // ============================================================
+  // admin.js — inline para no complicar el module loading
+  // ============================================================
+  const API = "/api";
+  const AUTH_KEY = "avisador-admin-auth";
+  let paginaActual = 1;
+  const PAGE_SIZE = 20;
+  let totalItems = 0;
+  let seleccionados = new Set();
+
+  // ---- Autenticación HTTPBasic ----
+  function credsGuardadas() {
+    try { return !!sessionStorage.getItem(AUTH_KEY); } catch { return false; }
+  }
+  function authHeaders() {
+    const raw = sessionStorage.getItem(AUTH_KEY);
+    return raw ? { Authorization: "Basic " + raw } : {};
+  }
+  function mostrarLogin() {
+    document.getElementById("login-overlay").classList.add("abierto");
+    setTimeout(() => document.getElementById("login-user").focus(), 50);
+  }
+  function ocultarLogin() {
+    document.getElementById("login-overlay").classList.remove("abierto");
+  }
+  function mostrarErrorLogin() {
+    document.getElementById("login-error").style.display = "block";
+  }
+  async function apiFetch(url, options = {}) {
+    const opts = {
+      ...options,
+      headers: { ...(options.headers || {}), ...authHeaders() },
+    };
+    const r = await fetch(url, opts);
+    if (r.status === 401) {
+      mostrarErrorLogin();
+      mostrarLogin();
+      throw new Error("Credenciales incorrectas");
+    }
+    return r;
+  }
+
+  // ---- Stats ----
+  async function cargarStats() {
+    try {
+      const r = await apiFetch(`${API}/admin/stats/`);
+      const d = await r.json();
+      document.getElementById("s-total").textContent = d.total ?? "—";
+      document.getElementById("s-pendiente").textContent = d.por_estado?.pendiente ?? 0;
+      document.getElementById("s-en_progreso").textContent = d.por_estado?.en_progreso ?? 0;
+      document.getElementById("s-completada").textContent = d.por_estado?.completada ?? 0;
+      document.getElementById("s-vencidas").textContent = d.vencidas ?? 0;
+    } catch {}
+  }
+
+  // ---- Tabla ----
+  async function cargarTabla(pagina = 1) {
+    const buscar = document.getElementById("f-buscar").value.trim();
+    const estado = document.getElementById("f-estado").value;
+
+    const params = new URLSearchParams({ page: pagina, page_size: PAGE_SIZE });
+    if (buscar) params.set("buscar", buscar);
+    if (estado) params.set("estado", estado);
+
+    const tbody = document.getElementById("tabla-body");
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--gris-5)">Cargando...</td></tr>`;
+
+    try {
+      const r = await apiFetch(`${API}/admin/notas/?${params}`);
+      const d = await r.json();
+      totalItems = d.total;
+      paginaActual = pagina;
+      seleccionados.clear();
+      actualizarBtnEliminar();
+
+      if (!d.items || d.items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--gris-5)">Sin resultados</td></tr>`;
+        actualizarPaginacion();
+        return;
+      }
+
+      tbody.innerHTML = "";
+      d.items.forEach((nota) => {
+        const tr = document.createElement("tr");
+        const limite = nota.limite
+          ? new Date(nota.limite).toLocaleDateString("es-ES", { day:"2-digit", month:"short", year:"numeric" })
+          : "—";
+        const creado = new Date(nota.creado_en).toLocaleDateString("es-ES", { day:"2-digit", month:"short" });
+
+        tr.innerHTML = `
+          <td><input type="checkbox" class="chk-nota" data-id="${nota.id}" /></td>
+          <td class="td-asunto" title="${nota.asunto}">${nota.asunto}</td>
+          <td class="td-motivo" title="${nota.motivo}">${nota.motivo}</td>
+          <td>
+            <select class="select-estado badge badge-${nota.estado}" data-id="${nota.id}">
+              <option value="pendiente"   ${nota.estado==="pendiente"?"selected":""}>pendiente</option>
+              <option value="en_progreso" ${nota.estado==="en_progreso"?"selected":""}>en progreso</option>
+              <option value="completada"  ${nota.estado==="completada"?"selected":""}>completada</option>
+              <option value="cancelada"   ${nota.estado==="cancelada"?"selected":""}>cancelada</option>
+            </select>
+          </td>
+          <td>${limite}</td>
+          <td>${creado}</td>
+          <td class="td-actions">
+            <button class="btn btn-sm btn-outline btn-ver" data-id="${nota.id}">Ver</button>
+            <button class="btn btn-sm btn-danger btn-del" data-id="${nota.id}">&#128465;</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Eventos checkboxes
+      tbody.querySelectorAll(".chk-nota").forEach((chk) => {
+        chk.addEventListener("change", () => {
+          if (chk.checked) seleccionados.add(Number(chk.dataset.id));
+          else seleccionados.delete(Number(chk.dataset.id));
+          actualizarBtnEliminar();
+        });
+      });
+
+      // Cambio de estado inline
+      tbody.querySelectorAll(".select-estado").forEach((sel) => {
+        sel.addEventListener("change", () => cambiarEstado(Number(sel.dataset.id), sel.value));
+      });
+
+      // Botón ver
+      tbody.querySelectorAll(".btn-ver").forEach((btn) => {
+        btn.addEventListener("click", () => verNota(Number(btn.dataset.id)));
+      });
+
+      // Botón eliminar
+      tbody.querySelectorAll(".btn-del").forEach((btn) => {
+        btn.addEventListener("click", () => eliminarNota(Number(btn.dataset.id)));
+      });
+
+      actualizarPaginacion();
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--rojo)">Error: ${e.message}</td></tr>`;
+    }
+  }
+
+  function actualizarPaginacion() {
+    const totalPags = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+    document.getElementById("pag-info").textContent = `Pág. ${paginaActual} / ${totalPags} (${totalItems} tareas)`;
+    document.getElementById("btn-anterior").disabled = paginaActual <= 1;
+    document.getElementById("btn-siguiente").disabled = paginaActual >= totalPags;
+  }
+
+  function actualizarBtnEliminar() {
+    document.getElementById("btn-eliminar-sel").disabled = seleccionados.size === 0;
+  }
+
+  // ---- Cambiar estado ----
+  async function cambiarEstado(id, nuevoEstado) {
+    try {
+      const r = await apiFetch(`${API}/admin/notas/${id}/estado`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      cargarStats();
+    } catch (e) {
+      alert("Error al cambiar estado: " + e.message);
+    }
+  }
+
+  // ---- Ver detalle ----
+  async function verNota(id) {
+    try {
+      const r = await fetch(`${API}/notas/${id}`);
+      const nota = await r.json();
+
+      const limite = nota.limite ? new Date(nota.limite).toLocaleString("es-ES") : "Sin límite";
+      const creado = new Date(nota.creado_en).toLocaleString("es-ES");
+      const deps = Array.isArray(nota.dependencias) ? nota.dependencias.join(", ") : nota.dependencias;
+
+      let mediaHTML = "";
+      if (nota.ruta_audio) {
+        mediaHTML += `<div class="modal-campo">
+          <div class="modal-campo-label">Audio</div>
+          <audio controls class="modal-media" src="/${nota.ruta_audio}"></audio>
+        </div>`;
+      }
+      if (nota.ruta_imagen) {
+        mediaHTML += `<div class="modal-campo">
+          <div class="modal-campo-label">Imagen</div>
+          <img class="modal-media" src="/${nota.ruta_imagen}" alt="imagen" />
+        </div>`;
+      }
+      if (nota.transcripcion) {
+        mediaHTML += `<div class="modal-campo">
+          <div class="modal-campo-label">Transcripción</div>
+          <div class="modal-campo-valor">${nota.transcripcion}</div>
+        </div>`;
+      }
+
+      document.getElementById("modal-title").textContent = nota.asunto;
+      document.getElementById("modal-body").innerHTML = `
+        <div class="modal-campo"><div class="modal-campo-label">Motivo</div><div class="modal-campo-valor">${nota.motivo}</div></div>
+        <div class="modal-campo"><div class="modal-campo-label">Dependencias</div><div class="modal-campo-valor">${deps}</div></div>
+        <div class="modal-campo"><div class="modal-campo-label">Lugar</div><div class="modal-campo-valor">${nota.lugar || "—"}</div></div>
+        <div class="modal-campo"><div class="modal-campo-label">Límite</div><div class="modal-campo-valor">${limite}</div></div>
+        <div class="modal-campo"><div class="modal-campo-label">Estado</div>
+          <span class="badge badge-${nota.estado}">${nota.estado.replace("_"," ")}</span>
+        </div>
+        <div class="modal-campo"><div class="modal-campo-label">Creado</div><div class="modal-campo-valor">${creado}</div></div>
+        ${mediaHTML}
+      `;
+      document.getElementById("modal-overlay").classList.add("abierto");
+    } catch (e) {
+      alert("Error al cargar detalle: " + e.message);
+    }
+  }
+
+  // ---- Eliminar una nota ----
+  async function eliminarNota(id) {
+    if (!confirm("¿Eliminar esta tarea? Esta acción no se puede deshacer.")) return;
+    try {
+      const r = await fetch(`${API}/notas/${id}`, { method: "DELETE" });
+      if (r.status !== 204) throw new Error(`HTTP ${r.status}`);
+      cargarTabla(paginaActual);
+      cargarStats();
+    } catch (e) {
+      alert("Error al eliminar: " + e.message);
+    }
+  }
+
+  // ---- Eliminar seleccionadas (bulk) ----
+  async function eliminarSeleccionadas() {
+    if (seleccionados.size === 0) return;
+    if (!confirm(`¿Eliminar ${seleccionados.size} tareas seleccionadas?`)) return;
+    try {
+      const r = await apiFetch(`${API}/admin/notas/bulk`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...seleccionados] }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      cargarTabla(paginaActual);
+      cargarStats();
+    } catch (e) {
+      alert("Error al eliminar: " + e.message);
+    }
+  }
+
+  // ---- Eventos ----
+  document.getElementById("chk-all").addEventListener("change", (e) => {
+    document.querySelectorAll(".chk-nota").forEach((chk) => {
+      chk.checked = e.target.checked;
+      if (e.target.checked) seleccionados.add(Number(chk.dataset.id));
+      else seleccionados.delete(Number(chk.dataset.id));
+    });
+    actualizarBtnEliminar();
+  });
+
+  // ---- Cerrar modal (función global para onclick en HTML) ----
+  function cerrarModal() {
+    document.getElementById("modal-overlay").classList.remove("abierto");
+    document.getElementById("modal-body").innerHTML = "";
+    document.getElementById("modal-title").textContent = "Detalle de tarea";
+  }
+
+  document.getElementById("btn-buscar").addEventListener("click", () => cargarTabla(1));
+  document.getElementById("f-buscar").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") cargarTabla(1);
+  });
+  document.getElementById("f-estado").addEventListener("change", () => cargarTabla(1));
+  document.getElementById("btn-anterior").addEventListener("click", () => cargarTabla(paginaActual - 1));
+  document.getElementById("btn-siguiente").addEventListener("click", () => cargarTabla(paginaActual + 1));
+  document.getElementById("btn-eliminar-sel").addEventListener("click", eliminarSeleccionadas);
+
+  // ---- Exportar (respeta filtros activos) ----
+  function construirQueryExport() {
+    const params = new URLSearchParams();
+    const buscar = document.getElementById("f-buscar").value.trim();
+    const estado = document.getElementById("f-estado").value;
+    if (buscar) params.set("buscar", buscar);
+    if (estado) params.set("estado", estado);
+    return params.toString();
+  }
+
+  async function exportar(formato) {
+    const q = construirQueryExport();
+    const url = `${API}/admin/notas/export?formato=${formato}${q ? "&" + q : ""}`;
+    try {
+      const r = await apiFetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const blob = await r.blob();
+      const ts = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "_").replace("_", "_");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `avisador_${ts}.${formato}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      alert("Error al exportar: " + e.message);
+    }
+  }
+
+  document.getElementById("btn-export-csv").addEventListener("click", () => exportar("csv"));
+  document.getElementById("btn-export-json").addEventListener("click", () => exportar("json"));
+
+  // Escape para cerrar modal
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") cerrarModal();
+  });
+
+  // ---- Init ----
+  document.getElementById("login-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const usuario = document.getElementById("login-user").value;
+    const password = document.getElementById("login-pass").value;
+    sessionStorage.setItem(AUTH_KEY, btoa(`${usuario}:${password}`));
+    document.getElementById("login-error").style.display = "none";
+    ocultarLogin();
+    cargarStats();
+    cargarTabla(1);
+  });
+
+  if (credsGuardadas()) {
+    cargarStats();
+    cargarTabla(1);
+  } else {
+    mostrarLogin();
+  }
+
+  // ---- Toggle modo oscuro ----
+  (function () {
+    var btn = document.getElementById("btn-tema");
+    function iconoTema() {
+      var esOscuro = document.documentElement.getAttribute("data-theme") === "dark"
+        || (!localStorage.getItem("avisador-tema")
+           && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      btn.textContent = esOscuro ? "\u2600\uFE0F" : "\u{1F319}";
+    }
+    btn.addEventListener("click", function () {
+      var actual = document.documentElement.getAttribute("data-theme");
+      var nuevo = actual === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", nuevo);
+      localStorage.setItem("avisador-tema", nuevo);
+      iconoTema();
+    });
+    iconoTema();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+Actúa como un desarrollador Senior en Python y FastAPI. Necesito que propongas la estructura completa para un sistema de gestión de tareas personalizado (Local-First / offline-First / PWA) para registrar cada idea, pendiente que surja, descargar una cabeza de una persona con TDH similar a google keep con el nombre de AVISADOR separando claramente backend, frontend, servicios, configuracion, tareas de ejecucion y documentacion. Debes incluir:
+
+API REST para crear, editar, listar, filtrar y eliminar notas.
+Soporte para notas de texto, lista, imagen y audio.
+Transcripción local de audio.
+Sincronización offline con almacenamiento local en el navegador.
+Panel admin para gestionar todas las notas.
+Interfaz móvil/PWA para crear notas rápido desde el celular.
+Integración opcional con correo, Telegram y calendario.
+Registro de errores del cliente para depuración.
+Bitácora de cambios y un esquema claro de carpetas.
+
+Requisitos funcionales del sistema:
+1. Formulario Multipart Form-Data: Recibir los campos fijos:
+   - asunto (str, obligatorio, es el objetivo)
+   - motivo (str, obligatorio, es la justificacion)
+   - dependencias (lista, obligatorio, necesario para cumplir el objetivo)
+   - lugar (str, opcional, texto plano para nombres o direcciones)
+   - f-inicio (datetime, fecha/hora asignar fecha/hora actual)
+   - limite (datetime, fecha/hora límite de la tarea)
+   - audio (UploadFile, opcional: archivo de audio grabado)
+   - imagen (UploadFile, opcional: foto tomada desde la cámara)
+
+2. Almacenamiento: Guardar los archivos adjuntos (audio/imagen) en sus respectivas carpetas dentro de `uploads/` usando un timestamp en el nombre para evitar colisiones.
+3. Notificaciones y Calendario: Al guardar la tarea y si estan configurados, ejecutar en segundo plano (usando BackgroundTasks de FastAPI):
+   - Envío de email vía `smtplib` con resumen HTML de la tarea.
+   - Mensaje al bot de Telegram informando la nueva tarea registrada.
+   - Creación de un evento en Google Calendar usando la fecha `limite` como finalización y el `asunto` como título.
+
+Quiero que me entregues:
+
+La arquitectura recomendada.
+La estructura de carpetas.
+Los archivos iniciales necesarios.
+El orden de implementación.
+Las tareas mínimas para poder ejecutarlo localmente.
+Recomendaciones sobre qué dejar para una primera versión simple y qué dejar para una segunda fase.
+Importante:
+
+Prioriza una solución simple, mantenible y modular.
+No uses frameworks innecesarios en el frontend si no hacen falta.
+Si propones dependencias, justifica por qué.
+Si detectas puntos de complejidad, indícalos antes de construir.
+

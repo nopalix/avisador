@@ -1,0 +1,38 @@
+# ============================================================
+# AVISADOR — Dependencias Python
+# ============================================================
+
+# --- Framework principal ---
+fastapi>=0.111.0          # Framework API REST async
+uvicorn[standard]>=0.29.0  # Servidor ASGI (incluye watchfiles para --reload)
+
+# --- Base de datos ---
+sqlalchemy>=2.0.0          # ORM — usamos SQLite (no necesita servidor)
+
+# --- Validación y formularios ---
+pydantic>=2.7.0            # Validación de schemas (viene con FastAPI)
+pydantic-settings>=2.3.0   # Leer .env con BaseSettings
+python-multipart>=0.0.9    # Soporte multipart/form-data (obligatorio para UploadFile)
+
+# --- Manejo async de archivos ---
+aiofiles>=23.2.1           # Escritura async de audio/imágenes
+
+# --- Transcripción de audio (Whisper) ---
+# Requiere ffmpeg en el sistema: sudo apt install ffmpeg
+openai-whisper>=20231117
+
+# --- Scheduler de recordatorios ---
+apscheduler>=3.10,<4       # Tareas programadas (revisión periódica de recordatorios)
+
+# --- Tests ---
+pytest>=8.0.0              # Runner de tests
+httpx>=0.27.0              # Cliente HTTP para TestClient de FastAPI
+pytest-asyncio>=0.23.0     # Soporte async en tests
+
+# --- Dev tools ---
+playwright>=1.40.0         # Generador automático de screenshots PWA (post-install: playwright install chromium)
+
+# --- Integraciones opcionales (instalar manualmente si se necesitan) ---
+google-api-python-client>=2.126.0  # Google Calendar API
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.0
